@@ -91,6 +91,15 @@
                 <updatePolicy>daily</updatePolicy>
             </snapshots>
         </repository>
+        <!-- hexosse repository -->
+        <repository>
+            <id>hexosse-repo</id>
+            <url>https://raw.github.com/hexosse/maven-repo/master/</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
     </repositories>
 
 
@@ -103,6 +112,7 @@
             <version>${bukkit.version}</version>
             <scope>provided</scope>
         </dependency>
+
         <!--hexosse Reflection-->
         <dependency>
             <groupId>com.github.hexocraftapi</groupId>
@@ -190,11 +200,6 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <artifactSet>
-                                <includes>
-                                    <include>com.github.hexocraftapi:**</include>
-                                </includes>
-                            </artifactSet>
                             <!-- utterly useless artifact from shade 2.x -->
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <!-- Le fichier jar d'origine est renommé en original-XXXX.jar -->
@@ -262,6 +267,8 @@
                     <repositoryName>maven-repo</repositoryName>
                     <!-- github username -->
                     <repositoryOwner>hexosse</repositoryOwner>
+                    <!-- github OAuth Token -->
+                    <oauth2Token>${env.GITHUB_OAUTH_TOKEN}</oauth2Token>
                 </configuration>
                 <executions>
                     <execution>
