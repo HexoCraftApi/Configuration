@@ -182,7 +182,7 @@ public class Comments
 		}
 
 		// Path
-		String path, lastPath = ""; int indent = 0; String[] comments;
+		String path, lastPath = ""; int indent = 0; String[] comments; boolean isList = false;
 		for (int i = 0; i < lines.size(); i++)
 		{
 			// Existing comment line will be replaced
@@ -191,8 +191,9 @@ public class Comments
 
 			// Check if a path exist
 			line = lines.get(i);
+			isList = line.trim().startsWith("-");
 			path = line.contains(":") ? line.split(":")[0] : "";
-			if(path.isEmpty())
+			if(isList || path.isEmpty())
 			{
 				writer.write(String.format("%" + (indent + 2) + "s", "") + line.trim());
 				writer.newLine();
