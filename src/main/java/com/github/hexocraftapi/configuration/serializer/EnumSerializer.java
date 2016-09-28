@@ -17,7 +17,9 @@ package com.github.hexocraftapi.configuration.serializer;
  */
 
 import com.github.hexocraftapi.configuration.Configuration;
+import com.github.hexocraftapi.sounds.Sounds;
 import org.apache.commons.lang.Validate;
+import org.bukkit.Sound;
 
 /**
  * @author <b>Hexosse</b> (<a href="https://github.com/hexosse">on GitHub</a>))
@@ -40,6 +42,9 @@ public class EnumSerializer implements Serializer<Enum>
 	public Enum deserialize(final Configuration configuration, Class<? extends Enum> oClass, final Class<?>[] pClass, final Object object)
 	{
 		Validate.notNull(object, "object cannot be null");
+
+		if(Sound.class.isAssignableFrom(oClass) || object instanceof Sound)
+			return Sounds.get(object.toString());
 
 		return Enum.valueOf(oClass, object.toString());
 	}
