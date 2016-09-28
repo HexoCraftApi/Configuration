@@ -52,7 +52,7 @@ public class ListSerializer implements Serializer<List<?>>
 
 		final List<Object> result = new ArrayList<Object>();
 		for(final Object value : (List<?>)object)
-			result.add(configuration.deserialize(configuration, pClass[0], null, value));
+			result.add(configuration.deserialize(configuration, pClass != null ? pClass[0] : value.getClass(), null, value));
 
 		return result;
 	}
