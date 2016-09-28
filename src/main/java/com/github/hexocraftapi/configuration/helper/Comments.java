@@ -222,7 +222,7 @@ public class Comments
 
 			// Add comment to the path
 			comments = this.config.getComment(path);
-			if(comments != null && comments.length > 0)
+			if(comments != null && comments.length > 0 && !comments[0].isEmpty())
 			{
 				boolean addDiese = comments[0].startsWith("#")==false;
 				for(String comment : comments)
