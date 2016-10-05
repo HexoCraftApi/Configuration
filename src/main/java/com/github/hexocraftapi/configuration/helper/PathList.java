@@ -34,17 +34,20 @@ public class PathList
 		if(path.top().path().equals("*") && size() > 0)
 		{
 			Path lastPath = null;
-			for(int i = size()-1; i >= 0 && lastPath==null; i--)
-			{
-				if(get(i).value()==false)
+			for(int i = size() - 1; i >= 0 && lastPath == null; i--)
+				if(get(i).value() == false)
 					lastPath = get(i);
-			}
 
 			if(lastPath!=null)
 				return add(new Path(path.owner(), path.path().replace("*", lastPath.path()), path.comments()).origin(path.origin()).value(path.value()));
 		}
 
-		if(paths.add(path))	return path;
+		// Check if path exist
+		Path exist = get(path.owner(), path.path());
+		if(exist != null) return exist;
+
+		// Add path to map
+		if(paths.add(path)) return path;
 		else return null;
 	}
 
@@ -65,7 +68,7 @@ public class PathList
 
 	Path get(Class owner, String path)
 	{
-		for(int i=0; i<size();i++)
+		for(int i = size() - 1; i >= 0; i--)
 		{
 			if(get(i).owner().equals(owner))
 				if(get(i).origin().equals(path) || get(i).path().equals(path))
