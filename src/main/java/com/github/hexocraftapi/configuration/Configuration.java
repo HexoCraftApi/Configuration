@@ -48,12 +48,12 @@ public abstract class Configuration implements ConfigurationSerializable
 	private boolean saveOnLoad = false;
 
 
-	public Configuration(JavaPlugin plugin, String fileName)
+	protected Configuration(JavaPlugin plugin, String fileName)
 	{
 		this(plugin, fileName, null);
 	}
 
-	public Configuration(JavaPlugin plugin, String fileName, String templateName)
+	protected Configuration(JavaPlugin plugin, String fileName, String templateName)
 	{
 		// Plugin must exist
 		Validate.notNull(plugin, "Plugin cannot be null");
