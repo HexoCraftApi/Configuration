@@ -122,7 +122,7 @@ public class Comments
 
 			// Found comment Path
 			path = fullPath.split(":")[0];
-			if(!path.isEmpty() && comments.size()>0)
+			if(!path.isEmpty())
 			{
 				// Erase last path if necessary
 				indent = path.indexOf(path.trim());
