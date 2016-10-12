@@ -1,4 +1,4 @@
-package com.github.hexocraftapi.configuration;
+package com.github.hexocraftapi.configuration.collection;
 
 /*
  * Copyright 2016 hexosse
@@ -16,18 +16,30 @@ package com.github.hexocraftapi.configuration;
  * limitations under the License.
  */
 
-import com.github.hexocraftapi.checkargs.annotation.CheckArgs;
-import org.bukkit.plugin.java.JavaPlugin;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author <b>Hexosse</b> (<a href="https://github.com/hexosse">on GitHub</a>))
  */
-@CheckArgs( types = JavaPlugin.class)
-public abstract class ConfigurationObject extends Configuration
+public class ConfigurationMap<V extends ConfigurationMapObject> extends HashMap<String, V>
 {
-	// Default constructor
-	protected ConfigurationObject(JavaPlugin plugin)
+	public ConfigurationMap()
 	{
-		super(plugin, "");
+	}
+
+	public ConfigurationMap(int initialCapacity)
+	{
+		super(initialCapacity);
+	}
+
+	public ConfigurationMap(int initialCapacity, float loadFactor)
+	{
+		super(initialCapacity, loadFactor);
+	}
+
+	public ConfigurationMap(Map<? extends String, ? extends V> m)
+	{
+		super(m);
 	}
 }

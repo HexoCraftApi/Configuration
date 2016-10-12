@@ -1,4 +1,4 @@
-package com.github.hexocraftapi.configuration;
+package com.github.hexocraftapi.configuration.collection;
 
 /*
  * Copyright 2016 hexosse
@@ -16,19 +16,19 @@ package com.github.hexocraftapi.configuration;
  * limitations under the License.
  */
 
+import com.github.hexocraftapi.checkargs.annotation.CheckArgs;
+import com.github.hexocraftapi.configuration.Configuration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * @author <b>Hexosse</b> (<a href="https://github.com/hexosse">on GitHub</a>))
  */
-public abstract class ConfigurationMapObject extends ConfigurationObject
+@CheckArgs( types = JavaPlugin.class)
+public abstract class ConfigurationObject extends Configuration
 {
-	protected ConfigurationMapObject(JavaPlugin plugin)
+	// Default constructor
+	protected ConfigurationObject(JavaPlugin plugin)
 	{
-		super(plugin);
+		super(plugin, "");
 	}
-
-	public abstract String getName();
-
-	public abstract void setName(String name);
 }

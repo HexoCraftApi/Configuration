@@ -17,13 +17,13 @@ package com.github.hexocraftapi.configuration.helper;
  */
 
 import com.github.hexocraftapi.configuration.Configuration;
-import com.github.hexocraftapi.configuration.ConfigurationMapObject;
-import com.github.hexocraftapi.configuration.ConfigurationObject;
 import com.github.hexocraftapi.configuration.annotation.ConfigFooter;
 import com.github.hexocraftapi.configuration.annotation.ConfigHeader;
 import com.github.hexocraftapi.configuration.annotation.ConfigPath;
 import com.github.hexocraftapi.configuration.annotation.ConfigValue;
 import com.github.hexocraftapi.configuration.annotation.DelegateSerialization;
+import com.github.hexocraftapi.configuration.collection.ConfigurationMapObject;
+import com.github.hexocraftapi.configuration.collection.ConfigurationObject;
 import com.github.hexocraftapi.configuration.serializer.*;
 import com.github.hexocraftapi.reflection.util.AccessUtil;
 import com.github.hexocraftapi.reflection.util.ConstructorUtil;
