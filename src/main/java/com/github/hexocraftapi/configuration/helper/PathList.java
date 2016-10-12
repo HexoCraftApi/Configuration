@@ -31,7 +31,7 @@ public class PathList
 
 	public Path add(Path path)
 	{
-		if(path.top().path().equals("*") && size() > 0)
+		if(path.top().path().equals("*"))
 		{
 			Path lastPath = null;
 			for(int i = size() - 1; i >= 0 && lastPath == null; i--)
@@ -40,10 +40,12 @@ public class PathList
 
 			if(lastPath!=null)
 				return add(new Path(path.owner(), path.path().replace("*", lastPath.path()), path.comments()).origin(path.origin()).value(path.value()));
+			else
+				return add(new Path(path.owner(), path.path().replace("*.", ""), path.comments()).origin(path.origin()).value(path.value()));
 		}
 
 		// Check if path exist
-		Path exist = get(path.owner(), path.path());
+		Path exist = get(path.owner(), path);
 		if(exist != null) return exist;
 
 		// Add path to map
@@ -63,6 +65,21 @@ public class PathList
 			if(get(i).path().equals(fullPath))
 				return get(i);
 		}
+		return null;
+	}
+
+	Path get(Class owner, Path path)
+	{
+		// Try to find the path with the full path
+		Path found = get(owner, path.path());
+		if(found != null)
+			return found;
+
+		// Try to find the path with the origin
+		found = get(owner, path.origin());
+		if(found != null)
+			return found;
+
 		return null;
 	}
 
