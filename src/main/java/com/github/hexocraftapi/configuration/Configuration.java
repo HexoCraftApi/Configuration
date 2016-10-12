@@ -68,7 +68,7 @@ public abstract class Configuration implements ConfigurationSerializable
 		if (dataFolder == null) throw new IllegalStateException();
 
 		// Config file
-		this.configFile = new File(plugin.getDataFolder(), fileName);
+		this.configFile = (fileName != null && !fileName.isEmpty()) ? new File(plugin.getDataFolder(), fileName) : null;
 		this.yamlConfiguration = new YamlConfiguration();
 
 		// Helpers
@@ -81,24 +81,29 @@ public abstract class Configuration implements ConfigurationSerializable
 	{
 		try
 		{
-			// Create config file from template (resource file) if it does not exist
-			if(!this.configFile.exists() && this.templateName!=null)
-				createFromTemplate();
+			// Only load if config file is defined
+			if(this.configFile != null)
+			{
+				// Create config file from template (resource file) if it does not exist
+				if(!this.configFile.exists() && this.templateName!=null)
+					createFromTemplate();
 
-			// Create an empty config file if it does not exist
-			if(!this.configFile.exists())
-				this.yamlConfiguration.save(this.configFile);
+				// Create an empty config file if it does not exist
+				if(!this.configFile.exists())
+					this.yamlConfiguration.save(this.configFile);
 
-			// Load file
-			this.yamlConfiguration.options().copyHeader(false);
-			this.yamlConfiguration.options().header(null);
-			this.yamlConfiguration.load(this.configFile);
+				// Load file
+				this.yamlConfiguration.options().copyHeader(false);
+				this.yamlConfiguration.options().header(null);
+				this.yamlConfiguration.load(this.configFile);
+			}
 
 			// Load fields
 			this.annotations.load();
 
 			// Load comments
-			this.comments.load();
+			if(this.configFile != null)
+				this.comments.load();
 
 			// Save if necessary
 			if(saveOnLoad) save();
@@ -120,11 +125,15 @@ public abstract class Configuration implements ConfigurationSerializable
 			// Update fields
 			this.annotations.update();
 
-			// Save file
-			this.yamlConfiguration.save(this.configFile);
+			// Only save if config file is defined
+			if(this.configFile != null)
+			{
+				// Save file
+				this.yamlConfiguration.save(this.configFile);
 
-			// save comments
-			this.comments.save();
+				// save comments
+				this.comments.save();
+			}
 
 			return true;
 		}
