@@ -35,7 +35,7 @@ public class ItemStackSerializer implements Serializer<ItemStack>
 	@Override
 	public Object serialize(final Configuration configuration, final ItemStack itemStack)
 	{
-		Validate.notNull(itemStack, "chunk cannot be null");
+		Validate.notNull(itemStack, "itemStack cannot be null");
 
 		final JsonItemStack jsonItemStack = new JsonItemStack(configuration.getPlugin(), itemStack);
 		return jsonItemStack.toJson();
