@@ -18,6 +18,7 @@ package com.github.hexocraftapi.configuration.helper;
 
 import com.github.hexocraftapi.configuration.Configuration;
 import com.github.hexocraftapi.configuration.ConfigurationMapObject;
+import com.github.hexocraftapi.configuration.ConfigurationObject;
 import com.github.hexocraftapi.configuration.annotation.ConfigFooter;
 import com.github.hexocraftapi.configuration.annotation.ConfigHeader;
 import com.github.hexocraftapi.configuration.annotation.ConfigPath;
@@ -40,6 +41,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
 import java.lang.reflect.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -158,15 +160,37 @@ public class Annotations
 					}
 					else
 					{
+						// Keep a track on the parent path
+						String parentPath = path.path();
+
 						if(List.class.isAssignableFrom(mainClass) && parameterClass.length>0 && Configuration.class.isAssignableFrom(parameterClass[0]))
 						{
-							// todo
+							Class<? extends ConfigurationObject> configClass = parameterClass[0].asSubclass(ConfigurationObject.class);
+							final List<ConfigurationObject> deserializedList = new ArrayList<>();
+
+							// Iterate all values from the list
+							for(final Object serializedValue : (List<?>)value)
+							{
+								Map<String, Object> serializedObject = (Map<String, Object>) serializedValue;
+
+								// Instantiate new Configuration Object
+								final ConfigurationObject configObject = (ConfigurationObject) ConstructorUtil.getConstructor(configClass, JavaPlugin.class).newInstance(config.getPlugin());
+
+								// Update the configObject
+								for(Map.Entry<String, Object> entry : serializedObject.entrySet())
+									configObject.getYamlConfiguration().set(entry.getKey(), entry.getValue());
+
+								// Load config object
+								(configClass.cast(configObject)).load();
+
+								//
+								deserializedList.add(configObject);
+							}
+
+							field.set(configuration, deserializedList);
 						}
 						else if(Map.class.isAssignableFrom(mainClass) && parameterClass.length>1 && String.class.equals(parameterClass[0]) && ConfigurationMapObject.class.isAssignableFrom(parameterClass[1]))
 						{
-							// Keep a track on the parent path
-							String parentPath = path.path();
-
 							//
 							Class<? extends ConfigurationMapObject> configClass = parameterClass[1].asSubclass(ConfigurationMapObject.class);
 							final ConfigurationSection sections = (ConfigurationSection)value;
@@ -179,7 +203,7 @@ public class Annotations
 								this.paths.add(new Path(configClass, parentPath + "." + sectionName, "").value(false));
 
 								// Instantiate new Configuration Object
-								final Object configObject = ConstructorUtil.getConstructor(configClass, JavaPlugin.class).newInstance(config.getPlugin());
+								final ConfigurationObject configObject = (ConfigurationObject) ConstructorUtil.getConstructor(configClass, JavaPlugin.class).newInstance(config.getPlugin());
 
 								// Load config object
 								load(configClass.cast(configObject));
@@ -256,17 +280,6 @@ public class Annotations
 			return pc;
 		}
 
-		/*else if(ConfigurationNamedObjectMap.class.isAssignableFrom(field.getType()))
-		{
-			Type superClassType = field.getType().getGenericSuperclass();
-
-			Class<?>[] pc = new Class<?>[2];
-			pc[0] = String.class;
-			pc[1] = parameterClass(field, superClassType)[0];
-
-			return pc;
-		}*/
-
 		return null;
 	}
 
@@ -311,31 +324,62 @@ public class Annotations
 			}
 			else
 			{
-				if(List.class.isAssignableFrom(mainClass) && parameterClass.length>0 && Configuration.class.isAssignableFrom(parameterClass[0]))
+				// Keep a track on the parent path
+				String parentPath = path.path();
+
+				if(List.class.isAssignableFrom(mainClass) && parameterClass.length>0 && ConfigurationObject.class.isAssignableFrom(parameterClass[0]))
 				{
-					// todo
+					// Cast to List
+					Class<? extends ConfigurationObject> configClass = parameterClass[0].asSubclass(ConfigurationObject.class);
+					List<ConfigurationObject> listObject = (List<ConfigurationObject>) object;
+
+					if(listObject != null)
+					{
+						final List<Object> result = new ArrayList<Object>();
+
+						// Loop through all entries
+						for(ConfigurationObject configurationObject : listObject)
+						{
+							// Extract entry data
+							ConfigurationObject configObject = configClass.cast(configurationObject);
+
+							// Serialize the configObject
+							if(configObject.save())
+							{
+								result.add(configObject.getYamlConfiguration().getValues(false));
+
+								// A new path for each entry
+								for(int i = 0; i < configObject.getPaths().size(); i++)
+								{
+									Path p = configObject.getPaths().get(i);
+									this.paths.add(new Path(configClass, parentPath + "." + p.path(), p.comments()).value(false).origin(p.origin()));
+								}
+							}
+						}
+						this.yamlConfiguration.set(path.path(), result);
+					}
 				}
 				else if(Map.class.isAssignableFrom(mainClass) && parameterClass.length>1 && String.class.equals(parameterClass[0]) && ConfigurationMapObject.class.isAssignableFrom(parameterClass[1]))
 				{
-					// Keep a track on the parent path
-					String parentPath = path.path();
-
 					// Cast to Map
 					Class<? extends ConfigurationMapObject> configClass = parameterClass[1].asSubclass(ConfigurationMapObject.class);
 					Map<String, ConfigurationMapObject> mapObject = (Map<String, ConfigurationMapObject>) object;
 
-					// Loop through all entries
-					for(Map.Entry<String, ConfigurationMapObject> entry : mapObject.entrySet())
+					if(mapObject != null)
 					{
-						// Extract entry data
-						String name = entry.getKey();
-						ConfigurationMapObject configObject = configClass.cast(entry.getValue());
+						// Loop through all entries
+						for(Map.Entry<String, ConfigurationMapObject> entry : mapObject.entrySet())
+						{
+							// Extract entry data
+							String name = entry.getKey();
+							ConfigurationMapObject configObject = configClass.cast(entry.getValue());
 
-						// A new path is created for each entry
-						this.paths.add(new Path(configClass, parentPath + "." + name, "").value(false));
+							// A new path is created for each entry
+							this.paths.add(new Path(configClass, parentPath + "." + name, "").value(false));
 
-						// Update
-						update(configObject);
+							// Update
+							update(configObject);
+						}
 					}
 				}
 				else
