@@ -182,7 +182,7 @@ public class Comments
 		}
 
 		// Path
-		String path, lastPath = ""; int indent = 0; String[] comments; boolean isList = false;
+		String path, lastPath = ""; int indent = 0; String[] comments; boolean isList = false, isStartList = false;
 		for (int i = 0; i < lines.size(); i++)
 		{
 			// Existing comment line will be replaced
@@ -191,18 +191,13 @@ public class Comments
 
 			// Check if a path exist
 			line = lines.get(i);
-			isList = line.trim().startsWith("-");
+			isStartList = line.trim().startsWith("-");
+			isList = (isList==false ? isStartList : isList);
 			path = line.contains(":") ? line.split(":")[0] : "";
-			if(isList || path.isEmpty())
-			{
-				writer.write(String.format("%" + (indent + 2) + "s", "") + line.trim());
-				writer.newLine();
-				continue;
-			}
 
 			// Erase last path if necessary
-			indent = path.indexOf(path.trim());
-			if(indent==0) lastPath = "";
+			indent = path.indexOf(path.trim()) + (isList ? 2 : 0);
+			if(indent==0) { lastPath = ""; isList = false; }
 
 			// Reconstruct full path
 			if(!lastPath.isEmpty())
@@ -210,11 +205,11 @@ public class Comments
 				// Update last path from indent value
 				String[] pathParts = lastPath.split("\\.");
 				lastPath = "";
-				for(int j=0;j<(indent/2);j++)
+				for(int j=0;j<((indent-(isList&&pathParts.length>1&&!isStartList?2:0))/2);j++)
 					lastPath += pathParts[j] + ".";
 
 				// Full path
-				path = (lastPath + path.trim()).replaceAll("\'","");
+				path = (lastPath + path.replace("- ", "").trim()).replaceAll("\'","");
 			}
 
 			// New line between each section
@@ -236,7 +231,7 @@ public class Comments
 			lastPath = path;
 
 			// Write the original path
-			writer.write(lines.get(i));
+			writer.write((indent>0 ? String.format("%" + indent + "s", "") : "") + line.trim());
 			writer.newLine();
 		}
 
