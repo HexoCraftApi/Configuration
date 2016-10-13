@@ -50,8 +50,8 @@ public class Comments
 	public void load() throws IOException
 	{
 		// Read config file and store each line in an array of string
-		ArrayList<String> lines = new ArrayList<String>();
-		String line = "";
+		ArrayList<String> lines = new ArrayList<>();
+		String line;
 		BufferedReader reader = new BufferedReader(new FileReader(this.config.getConfigFile()));
 		while((line = reader.readLine()) != null)
 			lines.add(line);
@@ -69,7 +69,7 @@ public class Comments
 
 	private String[] parseHeader(ArrayList<String> lines)
 	{
-		ArrayList<String> header = new ArrayList<String>();
+		ArrayList<String> header = new ArrayList<>();
 
 		for(String line : lines)
 		{
@@ -84,7 +84,7 @@ public class Comments
 
 	private String[] parseFooter(ArrayList<String> lines)
 	{
-		ArrayList<String> footer = new ArrayList<String>();
+		ArrayList<String> footer = new ArrayList<>();
 
 		for(int i = lines.size()-1; i >= 0; i--)
 		{
@@ -101,22 +101,22 @@ public class Comments
 
 	private void parseComments(ArrayList<String> lines, int from, int to)
 	{
-		String line;
-		String trimeLine;
-		String fullPath, path, lastPath = ""; int indent = 0;
-		final List<String> comments = new ArrayList<String>();
+		String line, trimLine;
+		String path, fullPath, lastPath = "";
+		int indent;
+		final List<String> comments = new ArrayList<>();
 
 		// Parse each lines to find comments
 		for(int i = from; i <= to; i++)
 		{
 			line = lines.get(i);
-			trimeLine = line.trim();
+			trimLine = line.trim();
 			fullPath = line;
 
 			// Find all comments
-			if(!trimeLine.isEmpty() && trimeLine.startsWith(COMMENT_PREFIX))
+			if(!trimLine.isEmpty() && trimLine.startsWith(COMMENT_PREFIX))
 			{
-				comments.add(trimeLine);
+				comments.add(trimLine);
 				continue;
 			}
 
@@ -158,8 +158,7 @@ public class Comments
 	public void save() throws IOException
 	{
 		// Read config file and store each line in an array of string
-		ArrayList<String> lines = new ArrayList<String>();
-		String line = "";
+		ArrayList<String> lines = new ArrayList<>(); String line;
 		BufferedReader reader = new BufferedReader(new FileReader(this.config.getConfigFile()));
 		while((line = reader.readLine()) != null)
 			lines.add(line);
@@ -177,12 +176,11 @@ public class Comments
 				writer.write(aHeader);
 				writer.newLine();
 			}
-
 			writer.newLine();
 		}
 
 		// Path
-		String path, lastPath = ""; int indent = 0; String[] comments; boolean isList = false, isStartList = false;
+		String path, lastPath = ""; int indent = 0; String[] comments;
 		for (int i = 0; i < lines.size(); i++)
 		{
 			// Existing comment line will be replaced
@@ -191,13 +189,18 @@ public class Comments
 
 			// Check if a path exist
 			line = lines.get(i);
-			isStartList = line.trim().startsWith("-");
-			isList = (isList==false ? isStartList : isList);
-			path = line.contains(":") ? line.split(":")[0] : "";
+			path = line.contains(":") ? line.split(":")[0].replace("- ", "") : "";
+			if(path.isEmpty())
+			{
+				writer.write(String.format("%" + (indent + 2) + "s", "") + line.trim());
+				writer.newLine();
+				continue;
+			}
 
 			// Erase last path if necessary
-			indent = path.indexOf(path.trim()) + (isList ? 2 : 0);
-			if(indent==0) { lastPath = ""; isList = false; }
+			indent = path.indexOf(path.trim());
+			if(line.trim().startsWith("-")) indent += 2;
+			if(indent==0) lastPath = "";
 
 			// Reconstruct full path
 			if(!lastPath.isEmpty())
@@ -205,12 +208,16 @@ public class Comments
 				// Update last path from indent value
 				String[] pathParts = lastPath.split("\\.");
 				lastPath = "";
-				for(int j=0;j<((indent-(isList&&pathParts.length>1&&!isStartList?2:0))/2);j++)
+				for(int j=0;j<(indent/2);j++)
 					lastPath += pathParts[j] + ".";
 
 				// Full path
-				path = (lastPath + path.replace("- ", "").trim()).replaceAll("\'","");
+				path = (lastPath + path.trim()).replaceAll("\'","");
 			}
+
+			// increase indent for list itel
+			if(this.config.getPaths().get(path)!=null)
+				indent += isListChild(path) ? (line.trim().startsWith("-") ? 0 : 2) : 0;
 
 			// New line between each section
 			if(indent==0) writer.newLine();
@@ -219,10 +226,10 @@ public class Comments
 			comments = this.config.getComment(path);
 			if(comments != null && comments.length > 0 && !comments[0].isEmpty())
 			{
-				boolean addDiese = comments[0].startsWith("#")==false;
+				boolean addDash = !comments[0].startsWith("#");
 				for(String comment : comments)
 				{
-					writer.write((indent > 0 ? String.format("%" + indent + "s", "") : "") + (addDiese ? "# " : "") + comment);
+					writer.write((indent > 0 ? String.format("%" + indent + "s", "") : "") + (addDash ? "# " : "") + comment);
 					writer.newLine();
 				}
 			}
@@ -251,6 +258,14 @@ public class Comments
 
 		// Close the writer
 		writer.close();
+	}
+
+	private boolean isListChild(String path)
+	{
+		Path p = this.config.getPaths().get(path);
+		if(p!=null) return List.class.isAssignableFrom(p.owner());
+
+		return false;
 	}
 
 	public String[] getHeader() { return this.header; }

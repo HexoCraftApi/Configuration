@@ -22,6 +22,7 @@ import com.github.hexocraftapi.configuration.annotation.ConfigHeader;
 import com.github.hexocraftapi.configuration.annotation.ConfigPath;
 import com.github.hexocraftapi.configuration.annotation.ConfigValue;
 import com.github.hexocraftapi.configuration.annotation.DelegateSerialization;
+import com.github.hexocraftapi.configuration.collection.ConfigurationMap;
 import com.github.hexocraftapi.configuration.collection.ConfigurationMapObject;
 import com.github.hexocraftapi.configuration.collection.ConfigurationObject;
 import com.github.hexocraftapi.configuration.serializer.*;
@@ -42,7 +43,6 @@ import org.bukkit.util.Vector;
 
 import java.lang.reflect.*;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -166,7 +166,7 @@ public class Annotations
 						if(List.class.isAssignableFrom(mainClass) && parameterClass.length>0 && Configuration.class.isAssignableFrom(parameterClass[0]))
 						{
 							Class<? extends ConfigurationObject> configClass = parameterClass[0].asSubclass(ConfigurationObject.class);
-							final List<ConfigurationObject> deserializedList = new ArrayList<>();
+							final List<ConfigurationObject> deserializedList = (List<ConfigurationObject>) ConstructorUtil.getConstructor(mainClass).newInstance();
 
 							// Iterate all values from the list
 							for(final Object serializedValue : (List<?>)value)
@@ -189,12 +189,13 @@ public class Annotations
 
 							field.set(configuration, deserializedList);
 						}
-						else if(Map.class.isAssignableFrom(mainClass) && parameterClass.length>1 && String.class.equals(parameterClass[0]) && ConfigurationMapObject.class.isAssignableFrom(parameterClass[1]))
+						else if((Map.class.isAssignableFrom(mainClass) && parameterClass.length == 2 && String.class.equals(parameterClass[0]) && ConfigurationMapObject.class.isAssignableFrom(parameterClass[1]))
+								|| (ConfigurationMap.class.isAssignableFrom(mainClass) && parameterClass.length == 1 && ConfigurationMapObject.class.isAssignableFrom(parameterClass[0])))
 						{
 							//
-							Class<? extends ConfigurationMapObject> configClass = parameterClass[1].asSubclass(ConfigurationMapObject.class);
+							Class<? extends ConfigurationMapObject> configClass = (parameterClass.length == 1 ? parameterClass[0] : parameterClass[1]).asSubclass(ConfigurationMapObject.class);
 							final ConfigurationSection sections = (ConfigurationSection)value;
-							final Map<String, ConfigurationMapObject> deserializedMap = new HashMap<>();
+							final Map<String, ConfigurationMapObject> deserializedMap = (Map<String, ConfigurationMapObject>) ConstructorUtil.getConstructor(mainClass).newInstance();
 
 							// Loop through all entries
 							for(final String sectionName : sections.getKeys(false))
@@ -352,17 +353,18 @@ public class Annotations
 								for(int i = 0; i < configObject.getPaths().size(); i++)
 								{
 									Path p = configObject.getPaths().get(i);
-									this.paths.add(new Path(configClass, parentPath + "." + p.path(), p.comments()).value(false).origin(p.origin()));
+									this.paths.add(new Path(mainClass, parentPath + "." + p.path(), p.comments()).value(false).origin(p.origin()));
 								}
 							}
 						}
 						this.yamlConfiguration.set(path.path(), result);
 					}
 				}
-				else if(Map.class.isAssignableFrom(mainClass) && parameterClass.length>1 && String.class.equals(parameterClass[0]) && ConfigurationMapObject.class.isAssignableFrom(parameterClass[1]))
+				else if((Map.class.isAssignableFrom(mainClass) && parameterClass.length == 2 && String.class.equals(parameterClass[0]) && ConfigurationMapObject.class.isAssignableFrom(parameterClass[1]))
+						|| (ConfigurationMap.class.isAssignableFrom(mainClass) && parameterClass.length == 1 && ConfigurationMapObject.class.isAssignableFrom(parameterClass[0])))
 				{
 					// Cast to Map
-					Class<? extends ConfigurationMapObject> configClass = parameterClass[1].asSubclass(ConfigurationMapObject.class);
+					Class<? extends ConfigurationMapObject> configClass = (parameterClass.length == 1 ? parameterClass[0] : parameterClass[1]).asSubclass(ConfigurationMapObject.class);
 					Map<String, ConfigurationMapObject> mapObject = (Map<String, ConfigurationMapObject>) object;
 
 					if(mapObject != null)

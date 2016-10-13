@@ -76,9 +76,12 @@ public class PathList
 			return found;
 
 		// Try to find the path with the origin
-		found = get(owner, path.origin());
-		if(found != null)
-			return found;
+		if(path.top().path().equals("*"))
+		{
+			found = get(owner, path.origin());
+			if(found != null)
+				return found;
+		}
 
 		return null;
 	}

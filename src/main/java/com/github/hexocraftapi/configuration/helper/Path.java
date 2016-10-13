@@ -16,6 +16,9 @@ package com.github.hexocraftapi.configuration.helper;
  * limitations under the License.
  */
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * @author <b>Hexosse</b> (<a href="https://github.com/hexosse">on GitHub</a>))
  */
@@ -82,8 +85,10 @@ class Path
 	Path level(int index)
 	{
 		StringBuilder builder = new StringBuilder(index);
-		for(int i = 0; i <= index; i++)
+		for(int i = 0; i <= index; i++) {
+			if(i!=0) builder.append(".");
 			builder.append(this.paths[i]);
+		}
 		return new Path(null, builder.toString());
 	}
 
@@ -95,5 +100,21 @@ class Path
 	public Path up()
 	{
 		return level(levels() - 1);
+	}
+
+	boolean isListChild()
+	{
+		if(this.owner != null && List.class.isAssignableFrom(this.owner))
+			return true;
+		else if(up() != null && up().owner() != null && List.class.isAssignableFrom(up().owner()))
+			return true;
+		return false;
+	}
+
+	boolean isMapChild()
+	{
+		if(this.owner!=null)
+			return Map.class.isAssignableFrom(this.owner);
+		return false;
 	}
 }
