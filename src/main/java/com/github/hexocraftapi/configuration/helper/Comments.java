@@ -34,7 +34,7 @@ public class Comments
 	private static final String COMMENT_PREFIX = "#";
 
 	private final Configuration config;
-	private PathList paths;
+	private       Paths         paths;
 
 	private String[] header;
 	private String[] footer;
@@ -142,9 +142,9 @@ public class Comments
 				}
 
 				// Store the path comment
-				Path p = this.paths.get(path);
-				if(p==null) p = new Path(null, path);
-				p.setComments(comments.toArray(new String[comments.size()]));
+				Paths.Path p = this.paths.get(path);
+				if(p==null) p = this.paths.create(path);
+				p.comments(comments.toArray(new String[comments.size()]));
 
 				// Keep in mind the last path
 				lastPath = path;
@@ -262,16 +262,14 @@ public class Comments
 
 	private boolean isListChild(String path)
 	{
-		Path p = this.config.getPaths().get(path);
-		if(p!=null) return List.class.isAssignableFrom(p.owner());
-
-		return false;
+		Paths.Path p = this.config.getPaths().get(path);
+		return p != null && p.childList();
 	}
 
 	public String[] getHeader() { return this.header; }
 	public String[] getFooter() { return this.footer; }
 	public String[] getComment(String path) {
-		Path p = this.paths.get(path);
+		Paths.Path p = this.paths.get(path);
 		return p != null ? p.comments() : null;
 	}
 }

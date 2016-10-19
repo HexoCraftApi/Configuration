@@ -19,7 +19,7 @@ package com.github.hexocraftapi.configuration;
 import com.github.hexocraftapi.configuration.annotation.ConfigurationSerializable;
 import com.github.hexocraftapi.configuration.helper.Annotations;
 import com.github.hexocraftapi.configuration.helper.Comments;
-import com.github.hexocraftapi.configuration.helper.PathList;
+import com.github.hexocraftapi.configuration.helper.Paths;
 import org.apache.commons.lang.Validate;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -41,7 +41,7 @@ public abstract class Configuration implements ConfigurationSerializable
 
 	private final File configFile;
 	private final YamlConfiguration yamlConfiguration;
-	private PathList paths = new PathList();
+	private Paths paths = new Paths();
 
 	private final Annotations annotations;
 	private final Comments comments;
@@ -173,7 +173,7 @@ public abstract class Configuration implements ConfigurationSerializable
 	public String getTemplateName() { return templateName; }
 	public File getConfigFile() { return configFile; }
 	public YamlConfiguration getYamlConfiguration() { return yamlConfiguration; }
-	public PathList getPaths() { return paths; }
+	public Paths getPaths() { return paths; }
 	public boolean saveOnLoad() {
 		return this.saveOnLoad;
 	}
