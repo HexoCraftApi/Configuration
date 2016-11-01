@@ -339,7 +339,12 @@ public class Annotations
 			path = this.paths.add(path.parent(), path);
 			this.parentPath = path.parent();
 
-			if(!(object instanceof Configuration))
+			if(object instanceof Configuration)
+			{
+				Configuration configObject = (Configuration) object;
+				update(configObject);
+			}
+			else
 			{
 				Class<?> mainClass = mainClass(field);
 				Class<?>[] parameterClass = parameterClass(field);
