@@ -168,6 +168,8 @@ public abstract class Configuration implements ConfigurationSerializable
 		this.yamlConfiguration.save(this.configFile);
 	}
 
+	private void setParentPath(Paths.Path parentPath) { this.annotations.setParentPath(parentPath); }
+
 	public JavaPlugin getPlugin() { return plugin; }
 	public String getFileName() { return fileName; }
 	public String getTemplateName() { return templateName; }

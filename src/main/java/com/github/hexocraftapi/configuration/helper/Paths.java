@@ -104,19 +104,25 @@ public class Paths
 
 
 	// Construct the path
-	private String constructPath(String path)
+	private String constructPath(Path parent, String path)
 	{
 		if(path.startsWith("*."))
 		{
-			Path lastPath = null;
-			for(int i = size() - 1; i >= 0 && lastPath == null; i--)
-				if(get(i).value() == false)
-					lastPath = get(i);
-
-			if(lastPath != null)
-				return path.replace("*", lastPath.path());
+			if(parent != null)
+				return path.replace("*", parent.path());
 			else
-				return path.replace("*.", "");
+			{
+				throw new AssertionError("This should not append");
+//				Path lastPath = null;
+//				for(int i = size() - 1; i >= 0 && lastPath == null; i--)
+//					if(get(i).value() == false)
+//						lastPath = get(i);
+//
+//				if(lastPath != null)
+//					return path.replace("*", lastPath.path());
+//				else
+//					return path.replace("*.", "");
+			}
 		}
 
 		return path;
@@ -149,7 +155,7 @@ public class Paths
 
 
 
-	class Path
+	public class Path
 	{
 		private final Paths paths;
 
@@ -164,12 +170,10 @@ public class Paths
 
 		Path(Paths paths, Path parent, String path)
 		{
-			Path exist = paths.findFromOrigin(parent, path);
-
 			this.paths = paths;
 			this.parent = path.contains(".") ? parent : null;
 			this.origin = path;
-			this.path = exist != null ? exist.path() : paths.constructPath(path);
+			this.path = null;
 		}
 
 		Path(Paths paths, String path)
@@ -198,6 +202,20 @@ public class Paths
 		boolean childMap() { return this.isChildMap; }
 		Path childMap(boolean childMap) { this.isChildMap = childMap; return  this; }
 
-		String path() { return this.path; }
+		String path()
+		{
+			if(this.path != null)
+				return this.path;
+
+			String path = this.origin();
+
+			// Check if path exist
+			Path exist = paths.findFromOrigin(parent, path);
+
+			// Construct path
+			this.path = exist != null ? exist.path() : paths.constructPath(this.parent, path);
+
+			return this.path;
+		}
 	}
 }

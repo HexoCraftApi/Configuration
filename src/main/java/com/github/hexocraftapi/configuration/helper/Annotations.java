@@ -134,9 +134,15 @@ public class Annotations
 
 			if(object instanceof Configuration)
 			{
+				//
+				this.parentPath = path;
+
 				// Load
 				Configuration configObject = (Configuration) object;
 				load(configObject);
+
+				//
+				this.parentPath = path.parent();
 
 				if(configObject.saveOnLoad())
 					configuration.saveOnLoad(true);
@@ -162,6 +168,17 @@ public class Annotations
 						final Object deserialized = MethodUtil.getMethod(serializer.deserialize(), "deserialize").invoke(configObject, configuration, mainClass, parameterClass, value);
 						field.set(configuration, deserialized);
 					}
+					else if(Configuration.class.isAssignableFrom(mainClass))
+					{
+						Class<? extends ConfigurationObject> configClass = mainClass.asSubclass(ConfigurationObject.class);
+						final ConfigurationObject configObject = (ConfigurationObject) ConstructorUtil.getConstructor(configClass, JavaPlugin.class).newInstance(config.getPlugin());
+
+						this.parentPath = path;
+						load(configClass.cast(configObject));
+						this.parentPath = path.parent();
+
+						field.set(configuration, configObject);
+					}
 					else
 					{
 						// Keep a track on the parent path
@@ -182,9 +199,10 @@ public class Annotations
 
 								// Update the configObject
 								for(Map.Entry<String, Object> entry : serializedObject.entrySet())
-									configObject.getYamlConfiguration().set(entry.getKey(), entry.getValue());
+									configObject.getYamlConfiguration().set(path.path() + "." + entry.getKey(), entry.getValue());
 
 								// Load config object
+								MethodUtil.getMethod(Configuration.class, "setParentPath").invoke(configObject, path);
 								(configClass.cast(configObject)).load();
 
 								//
@@ -236,6 +254,243 @@ public class Annotations
 			}
 		}
 	}
+
+	public void update() throws ReflectiveOperationException
+	{
+		update(this.config);
+	}
+
+	private void update(Configuration configuration) throws ReflectiveOperationException
+	{
+		for(Field field : configuration.getClass().getDeclaredFields())
+			update(configuration, AccessUtil.setAccessible(field));
+	}
+
+	private void update(Configuration configuration, Field field) throws ReflectiveOperationException
+	{
+		Validate.notNull(field, "field cannot be null");
+
+		ConfigPath configPath = field.getAnnotation(ConfigPath.class);
+		ConfigValue configValue = field.getAnnotation(ConfigValue.class);
+		DelegateSerialization serializer = field.getAnnotation(DelegateSerialization.class);
+
+		if(configPath == null && configValue == null) return;
+		if(skipField(field)) return;
+
+		// Object from field
+		final Object object = field.get(configuration);
+
+		//
+		if(configPath != null)
+		{
+			Validate.notNull(configPath.path(), "path cannot be null");
+			Validate.notEmpty(configPath.path(), "path cannot be empty");
+
+			Paths.Path path = this.paths.create(configPath.path()).comments(configPath.comment()).value(false);
+			this.paths.add(path.parent(), path);
+			this.parentPath = path;
+		}
+
+		//
+		if(configValue != null)
+		{
+			Validate.notNull(configValue.path(), "path cannot be null");
+			Validate.notEmpty(configValue.path(), "path cannot be empty");
+
+			Paths.Path path = this.paths.create(this.parentPath, configValue.path()).comments(configValue.comment()).value(Paths.isValue(field.getType()));
+			path = this.paths.add(path.parent(), path);
+			this.parentPath = path.parent();
+
+			if(object instanceof Configuration)
+			{
+				//
+				this.parentPath = path;
+
+				//
+				Configuration configObject = (Configuration) object;
+				update(configObject);
+
+				//
+				this.parentPath = path.parent();
+			}
+			else
+			{
+				Class<?> mainClass = mainClass(field);
+				Class<?>[] parameterClass = parameterClass(field);
+
+				if(serializer!=null && serializer.serialize()!=null)
+				{
+					final Object configObject = ConstructorUtil.getConstructor(serializer.serialize(), JavaPlugin.class).newInstance(config.getPlugin());
+					final Object serialized = MethodUtil.getMethod(serializer.deserialize(), "serialize").invoke(configObject, configuration, object);
+					this.yamlConfiguration.set(path.path(), serialized);
+				}
+				else
+				{
+					// Keep a track on the parent path
+					String currentPath = path.path();
+
+					if(List.class.isAssignableFrom(mainClass) && parameterClass.length>0 && ConfigurationObject.class.isAssignableFrom(parameterClass[0]))
+					{
+						// Cast to List
+						Class<? extends ConfigurationObject> configClass = parameterClass[0].asSubclass(ConfigurationObject.class);
+						List<ConfigurationObject> listObject = (List<ConfigurationObject>) object;
+
+						if(listObject != null)
+						{
+							final List<Object> result = new ArrayList<>();
+
+							// Loop through all entries
+							for(ConfigurationObject configurationObject : listObject)
+							{
+								// Extract entry data
+								ConfigurationObject configObject = configClass.cast(configurationObject);
+
+								// Serialize the configObject
+								MethodUtil.getMethod(Configuration.class, "setParentPath").invoke(configObject, path);
+								if(configObject.save())
+								{
+									result.add(configObject.getYamlConfiguration().get(path.path()));
+
+									// A new path for each entry
+									for(int i = 0; i < configObject.getPaths().size(); i++)
+									{
+										Paths.Path p = configObject.getPaths().get(i);
+										//p = this.paths.create(path, currentPath + "." + p.path()).origin(p.origin()).comments(p.comments()).value(p.value()).childList(this.paths.isList(mainClass)).childMap(this.paths.isMap(mainClass));
+										p = this.paths.create(p.parent(), p.path()).origin(p.origin()).comments(p.comments()).value(p.value()).childList(this.paths.isList(mainClass)).childMap(this.paths.isMap(mainClass));
+										p = this.paths.add(p.parent(), p);
+									}
+								}
+							}
+							this.yamlConfiguration.set(path.path(), result);
+						}
+					}
+					else if((Map.class.isAssignableFrom(mainClass) && parameterClass.length == 2 && String.class.equals(parameterClass[0]) && ConfigurationMapObject.class.isAssignableFrom(parameterClass[1]))
+							|| (ConfigurationMap.class.isAssignableFrom(mainClass) && parameterClass.length == 1 && ConfigurationMapObject.class.isAssignableFrom(parameterClass[0])))
+					{
+						// Cast to Map
+						Class<? extends ConfigurationMapObject> configClass = (parameterClass.length == 1 ? parameterClass[0] : parameterClass[1]).asSubclass(ConfigurationMapObject.class);
+						Map<String, ConfigurationMapObject> mapObject = (Map<String, ConfigurationMapObject>) object;
+
+						if(mapObject != null)
+						{
+							// Loop through all entries
+							for(Map.Entry<String, ConfigurationMapObject> entry : mapObject.entrySet())
+							{
+								// Extract entry data
+								String name = entry.getKey();
+								ConfigurationMapObject configObject = configClass.cast(entry.getValue());
+
+								// A new path is created for each entry
+								Paths.Path p = this.paths.create(path, currentPath + "." + name).origin(currentPath + "." + name).value(false);
+								p = this.paths.add(path, p);
+								this.parentPath = p;
+
+								// Update
+								update(configObject);
+							}
+						}
+
+						this.parentPath = path.parent();
+					}
+					else
+					{
+						final Object serialized = configuration.serialize(configuration, object);
+						this.yamlConfiguration.set(path.path(), serialized);
+					}
+				}
+			}
+		}
+	}
+
+	public Object serialize(Configuration configuration, Object object)
+	{
+		if(object == null)
+			return null;
+
+			//if(object instanceof Serializer)
+			//	return ((Serializer) object).serialize(configuration, object);
+
+		else if(object instanceof String)
+			return StringSerializer.get().serialize(configuration, (String)object);
+
+		else if(object instanceof Enum)
+			return EnumSerializer.get().serialize(configuration, (Enum<?>)object);
+
+		else if(object instanceof List)
+			return ListSerializer.get().serialize(configuration, (List<?>)object);
+
+		else if(object instanceof Map)
+			return MapSerializer.get().serialize(configuration, (Map<?, ?>)object);
+
+		else if(object instanceof Location)
+			return LocationSerializer.get().serialize(configuration, (Location)object);
+
+		else if(object instanceof Chunk)
+			return ChunkSerializer.get().serialize(configuration, (Chunk)object);
+
+		else if(object instanceof Vector)
+			return VectorSerializer.get().serialize(configuration, (Vector)object);
+
+		else if(object instanceof ItemStack)
+			return ItemStackSerializer.get().serialize(configuration, (ItemStack)object);
+
+		else
+			return object;
+	}
+
+	public Object deserialize(Configuration configuration, Class<?> oClass, Class<?>[] pClass, Object object) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, InstantiationException
+	{
+		if(object == null)
+			return null;
+
+			//else if(Serializer.class.isAssignableFrom(aClass) || object instanceof Serializer)
+			//{
+			//	final Class<?> parentClass = aClass.getDeclaringClass();
+			//	if(parentClass != null && parentClass != aClass)
+			//	{
+			//		final Object parentObject = ConstructorUtil.getConstructor(parentClass, JavaPlugin.class).newInstance(configuration.getPlugin());
+			//		final Object configObject = ConstructorUtil.getConstructor(aClass, parentClass, JavaPlugin.class).newInstance(parentObject, config.getPlugin());
+			//		return MethodUtil.getMethod(aClass, "deserialize").invoke(configObject, configuration, object.getClass(), object);
+			//	}
+			//	else
+			//	{
+			//		final Object configObject = ConstructorUtil.getConstructor(aClass, JavaPlugin.class).newInstance(config.getPlugin());
+			//		return MethodUtil.getMethod(aClass, "deserialize").invoke(configObject, configuration, object.getClass(), object);
+			//	}
+			//}
+
+		else if(oClass.isPrimitive()) {
+			return Primitives.wrap(oClass).getMethod("valueOf", String.class).invoke(this, object.toString());
+		}
+
+		else if(Primitives.isWrapperType(oClass)) {
+			return oClass.getMethod("valueOf", String.class).invoke(this, object.toString());
+		}
+
+		else if(oClass.isEnum() || object instanceof Enum)
+			return EnumSerializer.get().deserialize(configuration, (Class<? extends Enum>)oClass, pClass, object);
+
+		else if(List.class.isAssignableFrom(oClass) || object instanceof List)
+			return ListSerializer.get().deserialize(configuration, (Class<? extends List<?>>)oClass, pClass, object);
+
+		else if(Map.class.isAssignableFrom(oClass) || object instanceof Map)
+			return MapSerializer.get().deserialize(configuration, (Class<? extends Map<?,?>>)oClass, pClass, object);
+
+		else if(Location.class.isAssignableFrom(oClass) || object instanceof Location)
+			return LocationSerializer.get().deserialize(configuration, (Class<? extends Location>)oClass, pClass, object);
+
+		else if(Chunk.class.isAssignableFrom(oClass) || object instanceof Chunk)
+			return ChunkSerializer.get().deserialize(configuration, (Class<? extends Chunk>)oClass, pClass, object);
+
+		else if(Vector.class.isAssignableFrom(oClass) || object instanceof Vector)
+			return VectorSerializer.get().deserialize(configuration, (Class<? extends Vector>)oClass, pClass, object);
+
+		else if(ItemStack.class.isAssignableFrom(oClass) || object instanceof ItemStack)
+			return ItemStackSerializer.get().deserialize(configuration, (Class<? extends ItemStack>)oClass, pClass, object);
+
+		return ChatColor.translateAlternateColorCodes('&', object.toString());
+	}
+
 
 	private static Class<?> mainClass(Field field)
 	{
@@ -293,237 +548,13 @@ public class Annotations
 		return null;
 	}
 
-	public void update() throws ReflectiveOperationException
-	{
-		update(this.config);
-	}
-
-	private void update(Configuration configuration) throws ReflectiveOperationException
-	{
-		for(Field field : configuration.getClass().getDeclaredFields())
-			update(configuration, AccessUtil.setAccessible(field));
-	}
-
-	private void update(Configuration configuration, Field field) throws ReflectiveOperationException
-	{
-		Validate.notNull(field, "field cannot be null");
-
-		ConfigPath configPath = field.getAnnotation(ConfigPath.class);
-		ConfigValue configValue = field.getAnnotation(ConfigValue.class);
-		DelegateSerialization serializer = field.getAnnotation(DelegateSerialization.class);
-
-		if(configPath == null && configValue == null) return;
-		if(skipField(field)) return;
-
-		// Object from field
-		final Object object = field.get(configuration);
-
-		//
-		if(configPath != null)
-		{
-			Validate.notNull(configPath.path(), "path cannot be null");
-			Validate.notEmpty(configPath.path(), "path cannot be empty");
-
-			Paths.Path path = this.paths.create(configPath.path()).comments(configPath.comment()).value(false);
-			this.paths.add(path.parent(), path);
-			this.parentPath = path;
-		}
-
-		//
-		if(configValue != null)
-		{
-			Validate.notNull(configValue.path(), "path cannot be null");
-			Validate.notEmpty(configValue.path(), "path cannot be empty");
-
-			Paths.Path path = this.paths.create(this.parentPath, configValue.path()).comments(configValue.comment()).value(Paths.isValue(field.getType()));
-			path = this.paths.add(path.parent(), path);
-			this.parentPath = path.parent();
-
-			if(object instanceof Configuration)
-			{
-				Configuration configObject = (Configuration) object;
-				update(configObject);
-			}
-			else
-			{
-				Class<?> mainClass = mainClass(field);
-				Class<?>[] parameterClass = parameterClass(field);
-
-				if(serializer!=null && serializer.serialize()!=null)
-				{
-					final Object configObject = ConstructorUtil.getConstructor(serializer.serialize(), JavaPlugin.class).newInstance(config.getPlugin());
-					final Object serialized = MethodUtil.getMethod(serializer.deserialize(), "serialize").invoke(configObject, configuration, object);
-					this.yamlConfiguration.set(path.path(), serialized);
-				}
-				else
-				{
-					// Keep a track on the parent path
-					String currentPath = path.path();
-
-					if(List.class.isAssignableFrom(mainClass) && parameterClass.length>0 && ConfigurationObject.class.isAssignableFrom(parameterClass[0]))
-					{
-						// Cast to List
-						Class<? extends ConfigurationObject> configClass = parameterClass[0].asSubclass(ConfigurationObject.class);
-						List<ConfigurationObject> listObject = (List<ConfigurationObject>) object;
-
-						if(listObject != null)
-						{
-							final List<Object> result = new ArrayList<>();
-
-							// Loop through all entries
-							for(ConfigurationObject configurationObject : listObject)
-							{
-								// Extract entry data
-								ConfigurationObject configObject = configClass.cast(configurationObject);
-
-								// Serialize the configObject
-								if(configObject.save())
-								{
-									result.add(configObject.getYamlConfiguration().getValues(false));
-
-									// A new path for each entry
-									for(int i = 0; i < configObject.getPaths().size(); i++)
-									{
-										Paths.Path p = configObject.getPaths().get(i);
-										p = this.paths.create(path, currentPath + "." + p.path()).origin(p.origin()).comments(p.comments()).value(p.value()).childList(this.paths.isList(mainClass)).childMap(this.paths.isMap(mainClass));
-										p = this.paths.add(path, p);
-									}
-								}
-							}
-							this.yamlConfiguration.set(path.path(), result);
-						}
-					}
-					else if((Map.class.isAssignableFrom(mainClass) && parameterClass.length == 2 && String.class.equals(parameterClass[0]) && ConfigurationMapObject.class.isAssignableFrom(parameterClass[1]))
-							|| (ConfigurationMap.class.isAssignableFrom(mainClass) && parameterClass.length == 1 && ConfigurationMapObject.class.isAssignableFrom(parameterClass[0])))
-					{
-						// Cast to Map
-						Class<? extends ConfigurationMapObject> configClass = (parameterClass.length == 1 ? parameterClass[0] : parameterClass[1]).asSubclass(ConfigurationMapObject.class);
-						Map<String, ConfigurationMapObject> mapObject = (Map<String, ConfigurationMapObject>) object;
-
-						if(mapObject != null)
-						{
-							// Loop through all entries
-							for(Map.Entry<String, ConfigurationMapObject> entry : mapObject.entrySet())
-							{
-								// Extract entry data
-								String name = entry.getKey();
-								ConfigurationMapObject configObject = configClass.cast(entry.getValue());
-
-								// A new path is created for each entry
-								Paths.Path p = this.paths.create(path, currentPath + "." + name).origin(currentPath + "." + name).value(false);
-								p = this.paths.add(path, p);
-								this.parentPath = p;
-
-								// Update
-								update(configObject);
-							}
-						}
-
-						this.parentPath = path.parent();
-					}
-					else
-					{
-						final Object serialized = configuration.serialize(configuration, object);
-						this.yamlConfiguration.set(path.path(), serialized);
-					}
-				}
-			}
-		}
-	}
-
 	private boolean skipField(Field field)
 	{
 		return Modifier.isTransient(field.getModifiers());
 	}
 
-	public Object serialize(Configuration configuration, Object object)
-	{
-		if(object == null)
-			return null;
 
-		//if(object instanceof Serializer)
-		//	return ((Serializer) object).serialize(configuration, object);
-
-		else if(object instanceof String)
-			return StringSerializer.get().serialize(configuration, (String)object);
-
-		else if(object instanceof Enum)
-			return EnumSerializer.get().serialize(configuration, (Enum<?>)object);
-
-		else if(object instanceof List)
-			return ListSerializer.get().serialize(configuration, (List<?>)object);
-
-		else if(object instanceof Map)
-			return MapSerializer.get().serialize(configuration, (Map<?, ?>)object);
-
-		else if(object instanceof Location)
-			return LocationSerializer.get().serialize(configuration, (Location)object);
-
-		else if(object instanceof Chunk)
-			return ChunkSerializer.get().serialize(configuration, (Chunk)object);
-
-		else if(object instanceof Vector)
-		return VectorSerializer.get().serialize(configuration, (Vector)object);
-
-		else if(object instanceof ItemStack)
-			return ItemStackSerializer.get().serialize(configuration, (ItemStack)object);
-
-		else
-			return object;
-	}
-
-	public Object deserialize(Configuration configuration, Class<?> oClass, Class<?>[] pClass, Object object) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, InstantiationException
-	{
-		if(object == null)
-			return null;
-
-		//else if(Serializer.class.isAssignableFrom(aClass) || object instanceof Serializer)
-		//{
-		//	final Class<?> parentClass = aClass.getDeclaringClass();
-		//	if(parentClass != null && parentClass != aClass)
-		//	{
-		//		final Object parentObject = ConstructorUtil.getConstructor(parentClass, JavaPlugin.class).newInstance(configuration.getPlugin());
-		//		final Object configObject = ConstructorUtil.getConstructor(aClass, parentClass, JavaPlugin.class).newInstance(parentObject, config.getPlugin());
-		//		return MethodUtil.getMethod(aClass, "deserialize").invoke(configObject, configuration, object.getClass(), object);
-		//	}
-		//	else
-		//	{
-		//		final Object configObject = ConstructorUtil.getConstructor(aClass, JavaPlugin.class).newInstance(config.getPlugin());
-		//		return MethodUtil.getMethod(aClass, "deserialize").invoke(configObject, configuration, object.getClass(), object);
-		//	}
-		//}
-
-		else if(oClass.isPrimitive()) {
-			return Primitives.wrap(oClass).getMethod("valueOf", String.class).invoke(this, object.toString());
-		}
-
-		else if(Primitives.isWrapperType(oClass)) {
-			return oClass.getMethod("valueOf", String.class).invoke(this, object.toString());
-		}
-
-		else if(oClass.isEnum() || object instanceof Enum)
-			return EnumSerializer.get().deserialize(configuration, (Class<? extends Enum>)oClass, pClass, object);
-
-		else if(List.class.isAssignableFrom(oClass) || object instanceof List)
-			return ListSerializer.get().deserialize(configuration, (Class<? extends List<?>>)oClass, pClass, object);
-
-		else if(Map.class.isAssignableFrom(oClass) || object instanceof Map)
-			return MapSerializer.get().deserialize(configuration, (Class<? extends Map<?,?>>)oClass, pClass, object);
-
-		else if(Location.class.isAssignableFrom(oClass) || object instanceof Location)
-			return LocationSerializer.get().deserialize(configuration, (Class<? extends Location>)oClass, pClass, object);
-
-		else if(Chunk.class.isAssignableFrom(oClass) || object instanceof Chunk)
-			return ChunkSerializer.get().deserialize(configuration, (Class<? extends Chunk>)oClass, pClass, object);
-
-		else if(Vector.class.isAssignableFrom(oClass) || object instanceof Vector)
-			return VectorSerializer.get().deserialize(configuration, (Class<? extends Vector>)oClass, pClass, object);
-
-		else if(ItemStack.class.isAssignableFrom(oClass) || object instanceof ItemStack)
-			return ItemStackSerializer.get().deserialize(configuration, (Class<? extends ItemStack>)oClass, pClass, object);
-
-		return ChatColor.translateAlternateColorCodes('&', object.toString());
-	}
+	public void setParentPath(Paths.Path parentPath) { this.parentPath = parentPath; }
 
 	public String[] getDefaultHeaderComment() { return this.header; }
 	public String[] getDefaultFooterComment() { return this.footer; }
