@@ -324,6 +324,17 @@ public class Annotations
 					final Object serialized = MethodUtil.getMethod(serializer.deserialize(), "serialize").invoke(configObject, configuration, object);
 					this.yamlConfiguration.set(path.path(), serialized);
 				}
+				else if(Configuration.class.isAssignableFrom(mainClass))
+				{
+					Class<? extends ConfigurationObject> configClass = mainClass.asSubclass(ConfigurationObject.class);
+					final ConfigurationObject configObject = (ConfigurationObject) ConstructorUtil.getConstructor(configClass, JavaPlugin.class).newInstance(config.getPlugin());
+
+					this.parentPath = path;
+					update(configClass.cast(configObject));
+					this.parentPath = path.parent();
+
+					field.set(configuration, configObject);
+				}
 				else
 				{
 					// Keep a track on the parent path
