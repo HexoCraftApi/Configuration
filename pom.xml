@@ -132,6 +132,10 @@
                     <groupId>com.github.hexocraftapi</groupId>
                     <artifactId>reflection</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.github.hexocraftapi</groupId>
+                    <artifactId>util</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -246,7 +250,7 @@
                                     </excludes>
                                 </filter>
                             </filters>
-                            <createDependencyReducedPom>true</createDependencyReducedPom>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                         </configuration>
                     </execution>
                 </executions>
