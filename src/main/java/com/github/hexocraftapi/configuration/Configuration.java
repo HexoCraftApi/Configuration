@@ -29,6 +29,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 
 /**
  * @author <b>Hexosse</b> (<a href="https://github.com/hexosse">on GitHub</a>))
@@ -122,6 +123,15 @@ public abstract class Configuration implements ConfigurationSerializable
 	{
 		try
 		{
+			// Remove all data from config file before saving
+			if(this.configFile != null)
+			{
+				Map<String, Object> configValues = this.yamlConfiguration.getValues(false);
+				for (Map.Entry<String, Object> entry : configValues.entrySet()) {
+					this.yamlConfiguration.set(entry.getKey(), null);
+				}
+			}
+
 			// Update fields
 			this.annotations.update();
 
