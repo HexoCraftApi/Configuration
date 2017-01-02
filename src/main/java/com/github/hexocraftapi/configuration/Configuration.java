@@ -49,6 +49,30 @@ public abstract class Configuration implements ConfigurationSerializable
 	private boolean saveOnLoad = false;
 
 
+	protected Configuration(JavaPlugin plugin, File configFile)
+	{
+		this(plugin, configFile, null);
+	}
+
+	protected Configuration(JavaPlugin plugin, File configFile, String templateName)
+	{
+		// Plugin must exist
+		Validate.notNull(plugin, "Plugin cannot be null");
+
+		//
+		this.plugin = plugin;
+		this.fileName = (configFile != null) ? configFile.getName() : null;
+		this.templateName = templateName;
+
+		// Config file
+		this.configFile = (configFile != null) ? configFile : null;
+		this.yamlConfiguration = new YamlConfiguration();
+
+		// Helpers
+		this.annotations = new Annotations(this);
+		this.comments = new Comments(this);
+	}
+
 	protected Configuration(JavaPlugin plugin, String fileName)
 	{
 		this(plugin, fileName, null);
@@ -56,25 +80,7 @@ public abstract class Configuration implements ConfigurationSerializable
 
 	protected Configuration(JavaPlugin plugin, String fileName, String templateName)
 	{
-		// Plugin must exist
-		Validate.notNull(plugin, "Plugin cannot be null");
-
-		//
-		this.plugin = plugin;
-		this.fileName = fileName;
-		this.templateName = templateName;
-
-		// Get the plugin data folder
-		File dataFolder = plugin.getDataFolder();
-		if (dataFolder == null) throw new IllegalStateException();
-
-		// Config file
-		this.configFile = (fileName != null && !fileName.isEmpty()) ? new File(plugin.getDataFolder(), fileName) : null;
-		this.yamlConfiguration = new YamlConfiguration();
-
-		// Helpers
-		this.annotations = new Annotations(this);
-		this.comments = new Comments(this);
+		this(plugin, (fileName != null && !fileName.isEmpty()) ? new File(plugin.getDataFolder(), fileName) : null , templateName);
 	}
 
 	// Load the configuration file
