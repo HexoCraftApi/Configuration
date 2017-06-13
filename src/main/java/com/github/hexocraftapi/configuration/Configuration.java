@@ -24,10 +24,7 @@ import org.apache.commons.lang.Validate;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
@@ -175,11 +172,11 @@ public abstract class Configuration implements ConfigurationSerializable
 	private void createFromTemplate() throws IOException
 	{
 		// Look for template (resource file) in the jar
-		InputStream defConfigStream = this.plugin.getResource(this.templateName);
-		if(defConfigStream == null)
+		Reader defaultConfigStream = new InputStreamReader(this.plugin.getResource("config.yml"), "UTF8"); ;
+		if(defaultConfigStream == null)
 			throw new FileNotFoundException("Could not find template file : " + this.templateName);
 
-		YamlConfiguration defConfig = YamlConfiguration.loadConfiguration(defConfigStream);
+		YamlConfiguration defConfig = YamlConfiguration.loadConfiguration(defaultConfigStream);
 		this.yamlConfiguration.setDefaults(defConfig);
 		this.yamlConfiguration.save(this.configFile);
 	}
