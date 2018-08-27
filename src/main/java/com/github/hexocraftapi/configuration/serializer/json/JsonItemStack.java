@@ -53,17 +53,17 @@ public class JsonItemStack
     {
         final JSONObject json = new JSONObject();
 
-        /*
-         * Check to see if the item is a skull with a null owner.
-         * This is because some people are getting skulls with null owners, which causes Spigot to throw an error
-         * when it tries to serialize the item. If this ever gets fixed in Spigot, this will be removed.
-         */
-        if (this.itemStack.getType() == Material.SKULL_ITEM) {
-            SkullMeta meta = (SkullMeta) this.itemStack.getItemMeta();
-            if (meta.hasOwner() && (meta.getOwner() == null || meta.getOwner().isEmpty())) {
-                this.itemStack.setItemMeta(this.plugin.getServer().getItemFactory().getItemMeta(Material.SKULL_ITEM));
-            }
-        }
+        ///*
+        // * Check to see if the item is a skull with a null owner.
+        // * This is because some people are getting skulls with null owners, which causes Spigot to throw an error
+        // * when it tries to serialize the item. If this ever gets fixed in Spigot, this will be removed.
+        // */
+        //if (this.itemStack.getType() == Material.SKULL_ITEM) {
+        //    SkullMeta meta = (SkullMeta) this.itemStack.getItemMeta();
+        //    if (meta.hasOwner() && (meta.getOwner() == null || meta.getOwner().isEmpty())) {
+        //        this.itemStack.setItemMeta(this.plugin.getServer().getItemFactory().getItemMeta(Material.SKULL_ITEM));
+        //    }
+        //}
 
         ByteArrayOutputStream outputStream;
         BukkitObjectOutputStream dataObject;
